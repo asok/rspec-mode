@@ -116,7 +116,7 @@
   :tag "Rspec runner command"
   :type '(radio (const :tag "Use 'rake spec' task" t)
                 (const :tag "Use 'spec' command" nil))
-  :group 'rspec-mode)
+
 
 (defcustom rspec-rake-command "rake"
   "The command for rake"
@@ -158,6 +158,11 @@
   :type 'string
   :group 'rspec-mode)
 
+(defcustom rspec-example-names '(it specify scenario)
+  "Words that should be considered as an RSpec example"
+  :type 'list
+  :group 'rspec-mode)
+
 ;;;###autoload
 (define-minor-mode rspec-mode
   "Minor mode for RSpec files"
@@ -175,6 +180,9 @@
 (defvar rspec-imenu-generic-expression
   '(("Examples"  "^\\( *\\(it\\|describe\\|context\\) +.+\\)"          1))
   "The imenu regex to parse an outline of the rspec file")
+
+(defun rspec-example-name-regexp ()
+  (format "\\(%s\\)" (mapconcat 'symbol-name rspec-example-names "\\|")))
 
 (defun rspec-set-imenu-generic-expression ()
   (make-local-variable 'imenu-generic-expression)
@@ -200,7 +208,9 @@
     (goto-char
      (save-excursion
        (end-of-line)
-       (unless (and (search-backward-regexp "^[[:space:]]*it[[:space:]]*(?[\"']" nil t)
+       (unless (and (search-backward-regexp
+                     (format "^[[:space:]]*%s[[:space:]]*(?[\"']" (rspec-example-name-regexp))
+                     nil t)
                     (save-excursion (ruby-end-of-block) (< start (point))))
          (error "Unable to find an example"))
        (point)))))
@@ -410,7 +420,8 @@ When in `dired-mode' runs marked specs or spec at point (works with directories 
   "Returns the name of the example in which the point is currently positioned; or nil if it is outside of and example"
   (save-excursion
     (rspec-beginning-of-example)
-    (re-search-forward "it[[:space:]]+['\"]\\(.*\\)['\"][[:space:]]*\\(do\\|DO\\|Do\\|{\\)")
+    (re-search-forward
+     (format "%s[[:space:]]+['\"]\\(.*\\)['\"][[:space:]]*\\(do\\|DO\\|Do\\|{\\)") (rspec-example-name-regexp))
     (match-string 1)))
 
 (defun rspec-run (&optional opts)
